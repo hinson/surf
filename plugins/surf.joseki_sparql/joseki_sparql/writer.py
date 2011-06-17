@@ -54,7 +54,7 @@ class WriterPlugin(SPARQLWriterPlugin):
         SPARQLWriterPlugin.__init__(self, reader, *args, **kwargs)
         
         self.__endpoint = kwargs.get("writer_endpoint", self.reader.endpoint)
-
+		
         self.__sparql_wrapper = JosekiWrapper(self.__endpoint, self.__results_format)
         self.__sparql_wrapper.setMethod("POST")
 
@@ -147,6 +147,46 @@ class WriterPlugin(SPARQLWriterPlugin):
             raise SparqlWriterException("Bad query: %s" % query_str), None, sys.exc_info()[2]
         except Exception, e:
             raise SparqlWriterException("Exception: %s" % e), None, sys.exc_info()[2]
+
+    def __remove(self, s = None, p = None, o = None, context = None):
+		# Joseki results don't convert() well
+        self.log.debug('REM : %s, %s, %s, %s' % (s, p, o, context))
+
+        query = delete()
+        try:
+            #clear
+            if s == None and p == None and o == None and context:
+                query = clear().graph(context)
+            else:
+                if context:
+                    query = delete().from_(context)
+
+                query.template(("?s", "?p", "?o"))
+
+                if context:
+                    where_group = NamedGroup(context)
+                else:
+                    where_group = Group()
+
+                where_group.append(("?s", "?p", "?o"))
+                filter = Filter("(" + self.__build_filter(s, p, o) + ")")
+                where_group.append(filter)
+
+                query.where(where_group)
+
+            query_str = unicode(query)
+            self.log.debug(query_str)
+            self.__sparql_wrapper.setQuery(query_str)
+            self.__sparql_wrapper.query()
+            return True
+        except EndPointNotFound, notfound:
+            self.log.exception("SPARQL endpoint not found")
+        except QueryBadFormed, badquery:
+            self.log.exception("Bad-formed SPARQL query")
+        except SPARQLWrapperException, sparqlwrapper:
+            self.log.exception("SPARQLWrapper exception")
+
+        return None
 
     def __build_filter(self, s, p, o):
         # Joseki doesn't like AND
