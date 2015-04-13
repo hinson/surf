@@ -92,7 +92,26 @@ class ReaderPlugin(RDFQueryReader):
         try:
             self.log.debug(q_string)
             self.__sparql_wrapper.setQuery(q_string)
-            return self.__sparql_wrapper.query().convert()
+            self.__sparql_wrapper.setReturnFormat(JSON)
+            result = self.__sparql_wrapper.query().convert()
+            
+            if 'boolean' in result:
+                return result['boolean']
+    
+            converted = []
+            for binding in result["results"]["bindings"]:
+                rdf_item = {}
+                for key, obj in binding.items():
+                    try:
+                        rdf_item[key] = json_to_rdflib(obj)
+                    except ValueError:
+                        continue
+    
+                converted.append(rdf_item)
+    
+            return converted
+            
+            
         except EndPointNotFound, _:
             raise SparqlReaderException("Endpoint not found"), None, sys.exc_info()[2]
         except QueryBadFormed, _:
