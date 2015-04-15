@@ -298,7 +298,7 @@ class Sesame2(httplib.HTTPConnection):
     def __query(self, id, query, infer = False, queryLn = 'SPARQL', limit = None, headers = {}):
         params = {'queryLn':queryLn,
                   'infer':'true' if infer else 'false',
-                  'query': query}
+                  'query': query.encode('utf-8')}
         if queryLn == 'Prolog' and limit and limit.isdigit():
             params['limit'] = limit
         results = self.sesame2_request('GET', 'query', {'id':str(id)}, params = params, headers = headers)
